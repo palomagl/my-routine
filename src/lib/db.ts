@@ -539,6 +539,7 @@ export const CATEGORIAS_TRANSACAO = [
   "Lazer",
   "Saúde",
   "Assinaturas",
+  "Estudos",
   "Outros",
 ] as const;
 

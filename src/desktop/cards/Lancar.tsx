@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { ArrowDownToLine, ArrowUpToLine, CalendarClock, FileSpreadsheet, Plus } from "lucide-react";
+import { ArrowDownToLine, ArrowUpToLine, CalendarClock, Plus } from "lucide-react";
 import { useLocale } from "@/contexts/LocaleContext";
-import { useContas } from "@/lib/aoVivo";
 import { useCores } from "../categorias";
 import { ContaDialog, TransacaoDialog } from "../Formularios";
-import { ImportarContasDialog } from "../ImportarContas";
 
-type Aberto = "expense" | "income" | "conta" | "importar" | null;
+type Aberto = "expense" | "income" | "conta" | null;
 
 /**
  * A faixa "Anotar" no topo de Finanças: um clique para lançar um gasto, uma
@@ -16,7 +14,6 @@ type Aberto = "expense" | "income" | "conta" | "importar" | null;
 export function LancarRapido() {
   const { t } = useLocale();
   const cores = useCores();
-  const contas = useContas().itens;
   const [aberto, setAberto] = useState<Aberto>(null);
 
   const botoes = [
@@ -51,16 +48,6 @@ export function LancarRapido() {
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        onClick={() => setAberto("importar")}
-        aria-label={t("importarPlanilha")}
-        title={t("importarPlanilha")}
-        className="flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-      >
-        <FileSpreadsheet className="h-4 w-4" />
-        <span className="hidden xl:inline">{t("importarPlanilha")}</span>
-      </button>
 
       <TransacaoDialog
         aberto={aberto === "expense" || aberto === "income"}
@@ -68,7 +55,6 @@ export function LancarRapido() {
         onFechar={() => setAberto(null)}
       />
       <ContaDialog aberto={aberto === "conta"} onFechar={() => setAberto(null)} />
-      <ImportarContasDialog aberto={aberto === "importar"} onFechar={() => setAberto(null)} existentes={contas} />
     </section>
   );
 }

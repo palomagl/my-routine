@@ -53,9 +53,8 @@ Marcar um hábito, concluir uma tarefa, buscar com `Ctrl + K`, ver os avisos de 
 - **Saldo de verdade:** diga quanto você tem agora (Pix, dinheiro, o que separou para uma conta) e o saldo anda sozinho a partir daí, sem precisar lançar o histórico inteiro.
 - **Entradas e gastos do mês**, comparados com o mês passado.
 - **Gráfico de entradas x gastos** em 7 dias, 30 dias ou 3 meses.
-- **Gastos por categoria** (Alimentação, Transporte, Moradia, Lazer, Saúde, Assinaturas).
+- **Gastos por categoria** (Alimentação, Transporte, Moradia, Lazer, Saúde, Assinaturas, Estudos), com a categoria sugerida pelo que você escreve: "mercado" vira Alimentação, "Claude" ou "curso" vira Estudos.
 - **Contas a pagar** com data de vencimento: a próxima a vencer em destaque, o que vence nos próximos 30 dias e quanto sai por mês. Compra parcelada (3x, 10x...), conta fixa todo mês e fatura do cartão, cada uma com a sua etiqueta.
-- **Importe sua planilha** de contas (CSV do Excel ou do Google Planilhas): o app lê data, descrição, valor e situação, e não duplica nada se você importar de novo.
 - **Metas do seu jeito:** "ler 6 livros até dezembro" anda de livro em livro, "juntar R$ 30 mil pro intercâmbio" anda em reais guardados. Cada uma com o seu prazo (próximos 12 meses ou longo prazo) e o ritmo que falta por mês.
 - **Olhinho para esconder os valores** quando tiver alguém do lado ou você estiver compartilhando a tela.
 

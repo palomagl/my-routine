@@ -5,7 +5,6 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
-  FileSpreadsheet,
   Pencil,
   Plus,
   Receipt,
@@ -21,7 +20,6 @@ import { cn } from "@/lib/utils";
 import { agruparPorMes, situacaoDe, vencimentoDe, type Situacao } from "../contas";
 import { dataDoDia } from "../formato";
 import { ContaDialog, Confirmar } from "../Formularios";
-import { ImportarContasDialog } from "../ImportarContas";
 import { BotaoIcone, Cartao, CartaoTopo, Esqueleto, Segmentado, Vazio } from "../ui";
 import { useDinheiro } from "../valores";
 import { useCores } from "../categorias";
@@ -171,7 +169,6 @@ export function ContasCard({ className }: { className?: string }) {
   const [filtro, setFiltro] = useState<Filtro>("abertas");
   const [todosMeses, setTodosMeses] = useState(false);
   const [dialogo, setDialogo] = useState<{ aberto: boolean; conta?: Bill }>({ aberto: false });
-  const [importar, setImportar] = useState(false);
   const [excluir, setExcluir] = useState<Bill | null>(null);
 
   const hoje = dayKey();
@@ -235,9 +232,6 @@ export function ContasCard({ className }: { className?: string }) {
                 { valor: "todas", rotulo: t("filtroTodas") },
               ]}
             />
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg bg-card" onClick={() => setImportar(true)}>
-              <FileSpreadsheet className="h-4 w-4" /> {t("importarPlanilha")}
-            </Button>
             <BotaoIcone rotulo={t("financesNewBill")} onClick={() => setDialogo({ aberto: true })}>
               <Plus className="h-[18px] w-[18px]" />
             </BotaoIcone>
@@ -250,8 +244,8 @@ export function ContasCard({ className }: { className?: string }) {
       ) : itens.length === 0 ? (
         <Vazio className="min-h-[140px] flex-col gap-3">
           <span>{t("contasVazio")}</span>
-          <Button variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => setImportar(true)}>
-            <FileSpreadsheet className="h-4 w-4" /> {t("importarPlanilha")}
+          <Button variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => setDialogo({ aberto: true })}>
+            <Plus className="h-4 w-4" /> {t("financesNewBill")}
           </Button>
         </Vazio>
       ) : (
@@ -390,7 +384,6 @@ export function ContasCard({ className }: { className?: string }) {
       )}
 
       <ContaDialog aberto={dialogo.aberto} inicial={dialogo.conta} onFechar={() => setDialogo({ aberto: false })} />
-      <ImportarContasDialog aberto={importar} onFechar={() => setImportar(false)} existentes={itens} />
       <Confirmar
         aberto={!!excluir}
         titulo={t("excluirContaTitulo").replace("{nome}", excluir ? `${excluir.name}${excluir.parcela ? ` ${excluir.parcela}` : ""}` : "")}

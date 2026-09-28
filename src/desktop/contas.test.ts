@@ -73,7 +73,9 @@ describe("nome, parcela e tipo", () => {
     expect(classificar("Card vó").tipo).toBe("cartao");
     expect(classificar("Cartão Paloma").categoria).toBe("Cartão");
     expect(classificar("Gang", "1/3")).toEqual({ categoria: "Compras", tipo: "parcela" });
-    expect(classificar("Faculdade", "1/3")).toEqual({ categoria: "Educação", tipo: "fixa" });
+    expect(classificar("Faculdade", "1/3")).toEqual({ categoria: "Estudos", tipo: "fixa" });
+    expect(classificar("New Laptop")).toEqual({ categoria: "Estudos", tipo: "avulsa" });
+    expect(classificar("Claude")).toEqual({ categoria: "Estudos", tipo: "fixa" });
   });
 });
 

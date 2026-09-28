@@ -74,7 +74,7 @@ export const CATEGORIAS_CONTA = [
   "Compras",
   "Serviços",
   "Moradia",
-  "Educação",
+  "Estudos",
   "Assinaturas",
   "Saúde",
   "Lazer",
@@ -95,8 +95,10 @@ const REGRAS: [RegExp, string, TipoConta][] = [
   [/\b(cart[aã]o|card|fatura|nubank)\b/i, "Cartão", "cartao"],
   [/internet|wi-?fi|\bluz\b|energia|[aá]gua|telefone|celular|\bg[aá]s\b|tv a cabo/i, "Serviços", "fixa"],
   [/aluguel|condom[ií]nio|iptu|financiamento/i, "Moradia", "fixa"],
-  [/netflix|spotify|prime video|disney|youtube|icloud|claude|chatgpt|\bhbo\b|assinatura|deezer|globoplay/i, "Assinaturas", "fixa"],
-  [/faculdade|curso|escola|mensalidade|matr[ií]cula|ingl[eê]s/i, "Educação", "fixa"],
+  // Estudos antes de Assinaturas e Compras: o Claude e o notebook são para estudar.
+  [/faculdade|curso|escola|mensalidade|matr[ií]cula|ingl[eê]s|idioma|udemy|alura|claude|chatgpt/i, "Estudos", "fixa"],
+  [/laptop|notebook|livro|apostila|material escolar/i, "Estudos", "avulsa"],
+  [/netflix|spotify|prime video|disney|youtube|icloud|\bhbo\b|assinatura|deezer|globoplay/i, "Assinaturas", "fixa"],
   [/academia|farm[aá]cia|plano de sa[uú]de|m[eé]dic|dentista|consulta/i, "Saúde", "avulsa"],
   [/loja|mercado ?livre|shopee|amazon|shein|roupa|t[eê]nis|sapato|bolsa|celular|fone|gang|laptop|notebook|magalu|americanas|renner|riachuelo|zara|compra/i, "Compras", "avulsa"],
 ];

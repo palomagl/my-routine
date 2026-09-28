@@ -219,7 +219,8 @@ const contas = criarColecao<Bill>("bills", "createdAt", "asc", (id, d) => ({
   name: d.name ?? "",
   amount: Number(d.amount) || 0,
   dueDate: String(d.dueDate ?? ""),
-  category: d.category ?? "Outros",
+  // "Educação" virou "Estudos" (o mesmo nome dos gastos); as antigas aparecem com o nome novo.
+  category: d.category === "Educação" ? "Estudos" : d.category ?? "Outros",
   paid: d.paid === true,
   vencimento: typeof d.vencimento === "string" ? d.vencimento : undefined,
   tipo: d.tipo,

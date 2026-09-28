@@ -6,6 +6,7 @@ import {
   Droplet,
   Dumbbell,
   Ellipsis,
+  GraduationCap,
   HeartPulse,
   Home,
   Leaf,
@@ -25,7 +26,9 @@ import type { TranslationKey } from "@/lib/translations";
 // Validadas com o validador de paleta (daltonismo e contraste), em claro e
 // escuro. A ordem é a de CATEGORIAS_TRANSACAO e não muda com os dados: uma
 // categoria tem sempre a mesma cor, em qualquer gráfico. "Outros" é cinza
-// de propósito — é a sobra, não uma categoria de verdade.
+// de propósito — é a sobra, não uma categoria de verdade. "Estudos" (ameixa)
+// foi a última a entrar: é a cor mais distante de todas as outras, com e sem
+// daltonismo, nos dois temas.
 
 const CORES_CATEGORIA: Record<CategoriaTransacao, [claro: string, escuro: string]> = {
   "Alimentação": ["#14a88f", "#12a189"],
@@ -34,6 +37,7 @@ const CORES_CATEGORIA: Record<CategoriaTransacao, [claro: string, escuro: string
   "Lazer": ["#3b82f6", "#3f86f2"],
   "Saúde": ["#e8618c", "#dc4f7c"],
   "Assinaturas": ["#d9a400", "#b58800"],
+  "Estudos": ["#8f208f", "#aa38ad"],
   "Outros": ["#94a3b8", "#7b8797"],
 };
 
@@ -75,6 +79,7 @@ export const ICONE_CATEGORIA: Record<CategoriaTransacao, LucideIcon> = {
   "Lazer": Ticket,
   "Saúde": HeartPulse,
   "Assinaturas": Repeat,
+  "Estudos": GraduationCap,
   "Outros": Ellipsis,
 };
 
@@ -119,4 +124,3 @@ export const ICONES_HABITO: Record<string, LucideIcon> = {
 };
 
 export const OPCOES_ICONE_HABITO = ["Droplet", "Dumbbell", "BookOpen", "Moon", "Coffee", "Leaf"];
-

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Utensils, Car, Home, Ticket, HeartPulse, Repeat, MoreHorizontal, LucideIcon } from "lucide-react";
+import { Utensils, Car, Home, Ticket, HeartPulse, Repeat, GraduationCap, MoreHorizontal, LucideIcon } from "lucide-react";
 import { transactionsApi, Transaction, CategoriaTransacao } from "@/lib/db";
 import { dayKey } from "@/lib/dates";
 import { useLocale } from "@/contexts/LocaleContext";
@@ -16,6 +16,7 @@ const CATEGORIA_ICONE: Record<CategoriaTransacao, LucideIcon> = {
   "Lazer": Ticket,
   "Saúde": HeartPulse,
   "Assinaturas": Repeat,
+  "Estudos": GraduationCap,
   "Outros": MoreHorizontal,
 };
 
@@ -26,6 +27,7 @@ const CATEGORIA_COR: Record<CategoriaTransacao, string> = {
   "Lazer": "hsl(var(--widget-goals))",
   "Saúde": "hsl(var(--destructive))",
   "Assinaturas": "hsl(var(--widget-notes))",
+  "Estudos": "hsl(var(--primary))",
   "Outros": "hsl(var(--widget-tasks))",
 };
 

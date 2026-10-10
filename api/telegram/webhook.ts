@@ -20,7 +20,13 @@ import { responder, type Io, type TelegramUpdate } from "../_lib/telegram/bot.js
 import { enviarMensagem } from "../_lib/telegram/cliente.js";
 import { CABECALHO_SEGREDO, segredoValido } from "../_lib/telegram/seguranca.js";
 import { desvincularPorChat, vincularPorCodigo } from "../_lib/telegram/vinculo.js";
-import { desfazerUltima, listarUltimas, registrarTransacao } from "../_lib/telegram/transacoes.js";
+import {
+  definirCartaoDaUltima,
+  desfazerUltima,
+  listarCartoes,
+  listarUltimas,
+  registrarTransacao,
+} from "../_lib/telegram/transacoes.js";
 
 const io: Io = {
   vincular: vincularPorCodigo,
@@ -28,6 +34,8 @@ const io: Io = {
   registrar: registrarTransacao,
   ultimas: listarUltimas,
   desfazer: desfazerUltima,
+  definirCartao: definirCartaoDaUltima,
+  cartoes: listarCartoes,
 };
 
 export async function POST(request: Request): Promise<Response> {

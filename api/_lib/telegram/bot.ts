@@ -42,6 +42,10 @@ export interface Io {
   registrar: (chatId: number, updateId: number, transacao: TransacaoInterpretada) => Promise<string>;
   ultimas: (chatId: number) => Promise<string>;
   desfazer: (chatId: number) => Promise<string>;
+  /** /cartao — diz em qual cartão foi o último gasto. */
+  definirCartao: (chatId: number, texto: string) => Promise<string>;
+  /** /cartoes — lista os cartões cadastrados. */
+  cartoes: (chatId: number) => Promise<string>;
 }
 
 export const MENSAGENS = {
@@ -61,10 +65,16 @@ export const MENSAGENS = {
     "• recebi 2500 de salário",
     "• uber 18",
     "",
+    "No crédito, é só dizer o cartão:",
+    "• gastei 50 de gasolina no cartão neuza nubank",
+    "• netflix 45 cartão paloma",
+    "",
     "Ou por comando:",
     "/gasto 30 mercado",
     "/entrada 2500 salário",
     "",
+    "/cartoes – seus cartões cadastrados",
+    "/cartao nubank – põe o último gasto nesse cartão",
     "/ultimas – suas últimas transações",
     "/desfazer – apaga a última transação registrada por aqui",
     "/desvincular – desfaz o vínculo desta conta com o Telegram",
@@ -75,6 +85,8 @@ export const MENSAGENS = {
     "Não consegui identificar um valor nessa mensagem. Tenta assim: \"gastei 30 no mercado\" ou /gasto 30 mercado.",
 
   comandoDesconhecido: "Não conheço esse comando. Veja os disponíveis em /ajuda.",
+
+  qualCartao: "Diz qual cartão, assim: /cartao nubank. Pra ver os seus, /cartoes.",
 
   soTexto: "Por enquanto eu só entendo mensagens de texto.",
 } as const;
@@ -141,6 +153,14 @@ export async function responder(update: TelegramUpdate, io: Io): Promise<Respost
       const transacao = interpretarComando("income", cmd.argumento);
       if (!transacao) return { chatId, texto: MENSAGENS.naoEntendi };
       return { chatId, texto: await io.registrar(chatId, update.update_id, transacao) };
+    }
+    case "cartoes":
+    case "cartões":
+      return { chatId, texto: await io.cartoes(chatId) };
+    case "cartao":
+    case "cartão": {
+      if (!cmd.argumento.trim()) return { chatId, texto: MENSAGENS.qualCartao };
+      return { chatId, texto: await io.definirCartao(chatId, cmd.argumento) };
     }
     case "ultimas":
       return { chatId, texto: await io.ultimas(chatId) };

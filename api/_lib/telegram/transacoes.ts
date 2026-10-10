@@ -11,6 +11,10 @@ import { Timestamp, getFirestore } from "firebase-admin/firestore";
 import { obterAppAdmin } from "../firebase-admin.js";
 import { obterUidPorChat } from "./vinculo.js";
 import type { TransacaoInterpretada } from "./parser.js";
+// As regras de cartão e o palpite de categoria são os mesmos do app — um
+// arquivo só, para o bot e a tela nunca discordarem.
+import { acharCartaoNoTexto, nomeCompleto, type Cartao } from "../../../src/lib/cartoes.js";
+import { sugerirCategoria } from "../../../src/lib/categorias.js";
 
 function db() {
   return getFirestore(obterAppAdmin());
@@ -52,6 +56,12 @@ async function comUid(chatId: number, acao: (uid: string) => Promise<string>): P
   return acao(uid);
 }
 
+/** Os cartões de crédito cadastrados por ela no app. */
+async function lerCartoes(uid: string): Promise<Cartao[]> {
+  const snap = await db().collection("users").doc(uid).collection("cards").get();
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Cartao, "id">) }));
+}
+
 /** Chamada pelo webhook pra /gasto, /entrada e texto livre já interpretado. */
 export async function registrarTransacao(
   chatId: number,
@@ -62,17 +72,24 @@ export async function registrarTransacao(
     const ref = db().collection("users").doc(uid).collection("transactions").doc(idDaTransacao(updateId));
     const existente = await ref.get();
 
-    // Já existe (o Telegram reenviou o mesmo update): não grava de novo, só
-    // confirma de novo — pra quem está do outro lado, o resultado é o mesmo.
+    // "gasolina cartão neuza nubank" -> cartão da Neuza do Nubank e descrição
+    // "gasolina". Com dois cartões da Neuza e só "neuza" escrito, registra sem
+    // cartão e pergunta qual é — melhor do que chutar.
+    const cartoes = await lerCartoes(uid);
+    const achado = acharCartaoNoTexto(transacao.description, cartoes);
+    const description = achado.textoLimpo || transacao.description;
+    const cartao = transacao.type === "expense" ? achado.cartao : null;
+
     if (!existente.exists) {
       await ref.set({
-        description: transacao.description,
+        description,
         amount: transacao.amount,
         type: transacao.type,
         date: dataHojeSaoPaulo(),
-        // O bot ainda não pergunta categoria — fica "Outros" até a pessoa
-        // reclassificar na tela de Finanças, se quiser.
-        category: "Outros",
+        // "Netflix" já entra em Assinaturas, "gasolina" em Transporte — o
+        // mesmo palpite que o formulário do app usa.
+        category: sugerirCategoria(description) ?? "Outros",
+        ...(cartao ? { cardId: cartao.id } : {}),
         source: "telegram",
         telegramChatId: String(chatId),
         createdAt: Timestamp.now(),
@@ -81,7 +98,47 @@ export async function registrarTransacao(
 
     const rotulo = transacao.type === "income" ? "Entrada" : "Gasto";
     const emoji = transacao.type === "income" ? "💰" : "💸";
-    return `${emoji} ${rotulo} de ${formatarReais(transacao.amount)} em ${transacao.description} registrado(a). Já aparece nas suas Finanças.`;
+    const onde = cartao ? ` no ${nomeCompleto(cartao)}` : "";
+    const confirmacao = `${emoji} ${rotulo} de ${formatarReais(transacao.amount)} em ${description}${onde} registrado(a).`;
+
+    if (achado.ambiguos.length > 1) {
+      const opcoes = achado.ambiguos.map((c) => `/cartao ${c.banco}`).join(" ou ");
+      return [confirmacao, "", `Tenho mais de um cartão com esse nome. Qual foi? Responde ${opcoes}.`].join("\n");
+    }
+    return `${confirmacao} Já aparece nas suas Finanças.`;
+  });
+}
+
+/** Chamada pelo webhook em /cartao: diz em qual cartão foi o último gasto. */
+export async function definirCartaoDaUltima(chatId: number, texto: string): Promise<string> {
+  return comUid(chatId, async (uid) => {
+    const cartoes = await lerCartoes(uid);
+    if (cartoes.length === 0) return "Você ainda não cadastrou nenhum cartão no app.";
+
+    const achado = acharCartaoNoTexto(texto, cartoes);
+    if (achado.ambiguos.length > 1) {
+      return `Tenho mais de um cartão assim: ${achado.ambiguos.map((c) => nomeCompleto(c)).join(", ")}. Diz o banco junto.`;
+    }
+    if (!achado.cartao) {
+      return `Não achei esse cartão. Os seus são: ${cartoes.map((c) => nomeCompleto(c)).join(", ")}.`;
+    }
+
+    const doTelegram = await ultimaDoChat(uid, chatId);
+    if (!doTelegram) return "Não achei nenhum gasto recente registrado por aqui.";
+
+    await doTelegram.ref.update({ cardId: achado.cartao.id });
+    const t = doTelegram.data() as { amount: number; description: string };
+    return `💳 ${formatarReais(t.amount)} em ${t.description} foi pro ${nomeCompleto(achado.cartao)}.`;
+  });
+}
+
+/** Chamada pelo webhook em /cartoes. */
+export async function listarCartoes(chatId: number): Promise<string> {
+  return comUid(chatId, async (uid) => {
+    const cartoes = await lerCartoes(uid);
+    if (cartoes.length === 0) return "Você ainda não cadastrou nenhum cartão. Dá pra criar nas Finanças, em Cartões.";
+    const linhas = cartoes.map((c) => `• ${nomeCompleto(c)} — fecha dia ${c.fechamento}, vence dia ${c.vencimento}`);
+    return ["💳 Seus cartões:", "", ...linhas, "", 'Pra usar: "gastei 50 de gasolina no cartão neuza nubank".'].join("\n");
   });
 }
 
@@ -108,24 +165,32 @@ export async function listarUltimas(chatId: number, limite = 5): Promise<string>
   });
 }
 
+/**
+ * A última transação que ESTE chat registrou.
+ *
+ * Sem índice composto: busca as últimas N por createdAt (índice padrão de
+ * campo único, sempre existe) e filtra por chat na memória. N=20 cobre
+ * qualquer sequência realista de uso misto entre app e bot.
+ */
+async function ultimaDoChat(uid: string, chatId: number) {
+  const snap = await db()
+    .collection("users")
+    .doc(uid)
+    .collection("transactions")
+    .orderBy("createdAt", "desc")
+    .limit(20)
+    .get();
+
+  return snap.docs.find((doc) => {
+    const t = doc.data() as { source?: string; telegramChatId?: string };
+    return t.source === "telegram" && t.telegramChatId === String(chatId);
+  });
+}
+
 /** Chamada pelo webhook em /desfazer. Só apaga a última transação criada por ESTE chat. */
 export async function desfazerUltima(chatId: number): Promise<string> {
   return comUid(chatId, async (uid) => {
-    // Sem índice composto: busca as últimas N por createdAt (índice padrão de
-    // campo único, sempre existe) e filtra por chat na memória. N=20 cobre
-    // qualquer sequência realista de uso misto entre app e bot.
-    const snap = await db()
-      .collection("users")
-      .doc(uid)
-      .collection("transactions")
-      .orderBy("createdAt", "desc")
-      .limit(20)
-      .get();
-
-    const doTelegram = snap.docs.find((doc) => {
-      const t = doc.data() as { source?: string; telegramChatId?: string };
-      return t.source === "telegram" && t.telegramChatId === String(chatId);
-    });
+    const doTelegram = await ultimaDoChat(uid, chatId);
 
     if (!doTelegram) {
       return "Não achei nenhuma transação recente registrada por aqui pra desfazer.";

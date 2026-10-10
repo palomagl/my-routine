@@ -16,6 +16,8 @@ function ioFalso(): Io {
     registrar: vi.fn(async () => "nunca deveria chamar registrar aqui"),
     ultimas: vi.fn(async () => "nunca deveria chamar ultimas aqui"),
     desfazer: vi.fn(async () => "nunca deveria chamar desfazer aqui"),
+    definirCartao: vi.fn(async () => "nunca deveria chamar definirCartao aqui"),
+    cartoes: vi.fn(async () => "nunca deveria chamar cartoes aqui"),
   };
 }
 
@@ -189,5 +191,42 @@ describe("responder — casos gerais", () => {
   it("ignora updates sem mensagem", async () => {
     const io = ioFalso();
     await expect(responder({ update_id: 3 }, io)).resolves.toBeNull();
+  });
+});
+
+describe("responder — cartões de crédito", () => {
+  it("/cartoes lista os cartões", async () => {
+    const io = ioFalso();
+    io.cartoes = vi.fn(async () => "Nubank · Paloma");
+    const resposta = await responder(privado("/cartoes"), io);
+    expect(io.cartoes).toHaveBeenCalledWith(42);
+    expect(resposta).toEqual({ chatId: 42, texto: "Nubank · Paloma" });
+  });
+
+  it("/cartao com o nome manda o último gasto pra esse cartão", async () => {
+    const io = ioFalso();
+    io.definirCartao = vi.fn(async () => "foi pro Nubank");
+    const resposta = await responder(privado("/cartao neuza nubank"), io);
+    expect(io.definirCartao).toHaveBeenCalledWith(42, "neuza nubank");
+    expect(resposta).toEqual({ chatId: 42, texto: "foi pro Nubank" });
+  });
+
+  it("/cartao sem dizer qual pergunta, em vez de chutar", async () => {
+    const io = ioFalso();
+    expect((await responder(privado("/cartao"), io))?.texto).toBe(MENSAGENS.qualCartao);
+    expect(io.definirCartao).not.toHaveBeenCalled();
+  });
+
+  it("o cartão no texto livre não vira comando: continua lançamento", async () => {
+    const io = ioFalso();
+    io.registrar = vi.fn(async () => "registrado");
+    await responder(privado("gastei 50 de gasolina no cartão neuza nubank"), io);
+    expect(io.registrar).toHaveBeenCalledWith(42, 1, {
+      type: "expense",
+      amount: 50,
+      // Quem tira as palavras do cartão da descrição é transacoes.ts, que sabe
+      // quais cartões existem; o parser só entrega o texto sem o valor.
+      description: "Gasolina cartão neuza nubank",
+    });
   });
 });

@@ -17,6 +17,7 @@ import { SaldoKpi } from "../cards/Saldo";
 import { LancarRapido } from "../cards/Lancar";
 import { TransacoesCard } from "../cards/Transacoes";
 import { TelegramFaixa } from "../cards/Extras";
+import { Cartoes } from "@/components/financas/Cartoes";
 
 function Kpis() {
   const { t } = useLocale();
@@ -132,6 +133,7 @@ export default function FinancasDesktop() {
           <MetasCard />
         </div>
         <ContasCard />
+        <Cartoes />
         <TelegramFaixa />
       </div>
     </>

@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocale } from "@/contexts/LocaleContext";
 import { executar } from "@/lib/acoes";
-import { useContas } from "@/lib/aoVivo";
+import { useCartoes, useContas } from "@/lib/aoVivo";
+import { BANCOS, nomeCompleto, type BancoCartao, type Cartao } from "@/lib/cartoes";
 import { ICONES_META, lerMeta, lerNumero, mesCurto, progressoDe, somarMesesAoMes, sugerirIcone, textosLegados, type TipoMeta } from "@/lib/metas";
 import { useTextosMeta } from "@/components/metas/Metas";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,6 +25,7 @@ import { dayKey } from "@/lib/dates";
 import {
   billsApi,
   carteiraApi,
+  cartoesApi,
   CATEGORIAS_TRANSACAO,
   goalsApi,
   transactionsApi,
@@ -56,6 +58,9 @@ function Campo({ rotulo, children, className }: { rotulo: string; children: Reac
 }
 
 const campo = "h-11 rounded-xl bg-background";
+
+/** Valor do seletor para "não foi no cartão" (o Select não aceita valor vazio). */
+const SEM_CARTAO = "dinheiro";
 
 function Janela({
   aberto,
@@ -153,8 +158,10 @@ export function TransacaoDialog({
   const [valor, setValor] = useState("");
   const [categoria, setCategoria] = useState<CategoriaTransacao>("Outros");
   const [data, setData] = useState(dayKey());
+  const [cartaoId, setCartaoId] = useState(SEM_CARTAO);
   const [categoriaTocada, setCategoriaTocada] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const cartoes = useCartoes().itens;
 
   useEffect(() => {
     if (!aberto) return;
@@ -163,6 +170,7 @@ export function TransacaoDialog({
     setValor(valorParaTexto(inicial?.amount));
     setCategoria(normalizarCategoria(inicial?.category));
     setData(inicial?.date || dayKey());
+    setCartaoId(inicial?.cardId ?? SEM_CARTAO);
     setCategoriaTocada(!!inicial);
   }, [aberto, inicial, tipoInicial]);
 
@@ -177,7 +185,17 @@ export function TransacaoDialog({
 
   const salvar = async () => {
     setSalvando(true);
-    const dados = { description: descricao.trim(), amount: numero, type: tipo, category: categoria, date: data };
+    // No crédito guarda o cartão; no dinheiro manda `null`, que apaga o campo
+    // — sem cartão, o gasto sai do saldo na hora, como sempre foi.
+    const noCartao = cartaoId !== SEM_CARTAO && cartoes.some((c) => c.id === cartaoId);
+    const dados = {
+      description: descricao.trim(),
+      amount: numero,
+      type: tipo,
+      category: categoria,
+      date: data,
+      cardId: noCartao ? cartaoId : null,
+    };
     const ok = await executar(
       async () => {
         if (inicial) await transactionsApi.update(inicial.id, dados);
@@ -253,6 +271,109 @@ export function TransacaoDialog({
           </SelectContent>
         </Select>
       </Campo>
+      {tipo === "expense" && cartoes.length > 0 && (
+        <Campo rotulo={t("comoPagou")}>
+          <Select value={cartaoId} onValueChange={setCartaoId}>
+            <SelectTrigger className={campo}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={SEM_CARTAO}>{t("pagouNoDinheiro")}</SelectItem>
+              {cartoes.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {nomeCompleto(c)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Campo>
+      )}
+    </Janela>
+  );
+}
+
+// ----------------------------------------------
+// Cartão de crédito
+// ----------------------------------------------
+
+export function CartaoDialog({ aberto, onFechar, inicial }: { aberto: boolean; onFechar: () => void; inicial?: Cartao }) {
+  const { t } = useLocale();
+  const [nome, setNome] = useState("");
+  const [banco, setBanco] = useState<BancoCartao>("nubank");
+  const [fechamento, setFechamento] = useState("20");
+  const [vencimento, setVencimento] = useState("27");
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    if (!aberto) return;
+    setNome(inicial?.nome ?? "");
+    setBanco(inicial?.banco ?? "nubank");
+    setFechamento(String(inicial?.fechamento ?? 20));
+    setVencimento(String(inicial?.vencimento ?? 27));
+  }, [aberto, inicial]);
+
+  const dia = (texto: string) => Math.min(Math.max(parseInt(texto, 10) || 1, 1), 31);
+  const podeSalvar = nome.trim().length > 0;
+
+  const salvar = async () => {
+    setSalvando(true);
+    const dados = { nome: nome.trim(), banco, fechamento: dia(fechamento), vencimento: dia(vencimento) };
+    const ok = await executar(
+      async () => {
+        if (inicial) await cartoesApi.update(inicial.id, dados);
+        else await cartoesApi.create({ ...dados, criadoEm: new Date().toISOString() });
+      },
+      { erro: inicial ? t("erroAoSalvar") : t("erroAoAdicionar") }
+    );
+    setSalvando(false);
+    if (ok !== null) onFechar();
+  };
+
+  const excluir = async () => {
+    if (!inicial) return;
+    const ok = await executar(() => cartoesApi.delete(inicial.id), { erro: t("erroAoExcluir") });
+    if (ok !== null) onFechar();
+  };
+
+  return (
+    <Janela
+      aberto={aberto}
+      onFechar={onFechar}
+      titulo={inicial ? t("cartaoEditar") : t("cartaoNovo")}
+      onSalvar={salvar}
+      salvando={salvando}
+      podeSalvar={podeSalvar}
+      rodapeExtra={inicial ? <BotaoExcluir rotulo={t("cartaoExcluir")} onExcluir={excluir} aberto={aberto} /> : undefined}
+    >
+      <Campo rotulo={t("cartaoNome")}>
+        <Input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} className={campo} placeholder={t("cartaoNomeEx")} />
+      </Campo>
+      <Campo rotulo={t("cartaoBanco")}>
+        <div className="grid grid-cols-3 gap-2">
+          {(Object.keys(BANCOS) as BancoCartao[]).map((op) => (
+            <button
+              key={op}
+              type="button"
+              onClick={() => setBanco(op)}
+              className={cn(
+                "rounded-xl px-2 py-3 text-sm font-semibold text-white transition-transform active:scale-[0.97]",
+                banco === op ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : "opacity-70"
+              )}
+              style={{ backgroundImage: `linear-gradient(135deg, ${BANCOS[op].de}, ${BANCOS[op].para})` }}
+            >
+              {BANCOS[op].rotulo}
+            </button>
+          ))}
+        </div>
+      </Campo>
+      <div className="grid grid-cols-2 gap-3">
+        <Campo rotulo={t("cartaoFechamento")}>
+          <Input inputMode="numeric" value={fechamento} onChange={(e) => setFechamento(e.target.value)} className={campo} />
+        </Campo>
+        <Campo rotulo={t("cartaoVencimento")}>
+          <Input inputMode="numeric" value={vencimento} onChange={(e) => setVencimento(e.target.value)} className={campo} />
+        </Campo>
+      </div>
     </Janela>
   );
 }

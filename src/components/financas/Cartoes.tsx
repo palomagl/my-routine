@@ -195,7 +195,9 @@ export function Cartoes({ aoEditarCompra }: { aoEditarCompra?: (compra: Transact
 
       {cartoes.length === 0 && <p className="py-5 text-center text-sm text-muted-foreground">{t("cartoesVazio")}</p>}
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* Largura travada: num monitor largo, meia tela de cartão fica enorme —
+          ele tem que parecer um cartão, não um banner. */}
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,300px))]">
         {faturas.map((f) => {
           const banco = BANCOS[f.cartao.banco];
           const estaAberto = aberto === f.cartao.id;

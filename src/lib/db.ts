@@ -30,6 +30,8 @@ import {
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import type { CategoriaTransacao } from "./categorias";
+import type { Cartao } from "./cartoes";
 import type { TemposPomodoro } from "./pomodoro";
 import { dayKey, lastNDays } from "./dates";
 import { isDoneOn, toggle as toggleHabit, type HabitProgress } from "./habits";
@@ -527,23 +529,10 @@ export const billsApi = {
 // FINANÇAS - Transações
 // ==============================================
 
-/**
- * Categorias das transações — mesma lista usada no seletor do formulário e no
- * gráfico "despesas por categoria". Transações antigas ou criadas pelo
- * Telegram (que ainda não pergunta categoria) usam "Outros" por padrão.
- */
-export const CATEGORIAS_TRANSACAO = [
-  "Alimentação",
-  "Transporte",
-  "Moradia",
-  "Lazer",
-  "Saúde",
-  "Assinaturas",
-  "Estudos",
-  "Outros",
-] as const;
-
-export type CategoriaTransacao = (typeof CATEGORIAS_TRANSACAO)[number];
+// A lista de categorias mora em categorias.ts, que o bot do Telegram também
+// lê (ele roda no Node da Vercel e não pode importar o Firebase do navegador).
+export { CATEGORIAS_TRANSACAO, type CategoriaTransacao } from "./categorias";
+export type { Cartao, BancoCartao } from "./cartoes";
 
 export interface Transaction {
   id: string;
@@ -554,13 +543,42 @@ export interface Transaction {
   date: string;
   /** Ausente em transações antigas — quem lê trata como "Outros". */
   category?: CategoriaTransacao;
+  /**
+   * Cartão de crédito usado, quando foi no crédito. Sem ele, o gasto saiu do
+   * dinheiro na hora; com ele, entra na fatura e só pesa no saldo quando a
+   * fatura é paga.
+   */
+  cardId?: string;
 }
+
+// ==============================================
+// FINANÇAS - Cartões de crédito
+// ==============================================
+// O cartão em si (nome, banco, fechamento, vencimento). A fatura não é
+// guardada: ela é a soma das transações com aquele cardId, calculada em
+// cartoes.ts. Assim nunca fica uma fatura desatualizada no banco.
+
+export const cartoesApi = {
+  list: () => listar<Cartao>("cards", "createdAt", "asc"),
+  create: (dados: Omit<Cartao, "id">) => criar<Cartao>("cards", semIndefinidos({ ...dados })),
+  async update(id: string, dados: Partial<Cartao>) {
+    await updateDoc(ref("cards", id), semIndefinidos({ ...dados }));
+  },
+  async delete(id: string) {
+    await deleteDoc(ref("cards", id));
+  },
+};
+
+/** `cardId: null` quer dizer "este gasto não foi no cartão" — apaga o campo. */
+type DadosTransacao = Omit<Transaction, "id" | "cardId"> & { cardId?: string | null };
 
 export const transactionsApi = {
   list: () => listar<Transaction>("transactions", "createdAt", "desc"),
-  create: (dados: Omit<Transaction, "id">) => criar<Transaction>("transactions", { ...dados }),
-  async update(id: string, dados: Partial<Transaction>) {
-    await updateDoc(ref("transactions", id), dados);
+  create: ({ cardId, ...dados }: DadosTransacao) =>
+    criar<Transaction>("transactions", { ...dados, ...(cardId ? { cardId } : {}) }),
+  async update(id: string, { cardId, ...dados }: Partial<DadosTransacao>) {
+    const cartao = cardId === undefined ? {} : { cardId: cardId === null ? deleteField() : cardId };
+    await updateDoc(ref("transactions", id), { ...dados, ...cartao });
   },
   async delete(id: string) {
     await deleteDoc(ref("transactions", id));

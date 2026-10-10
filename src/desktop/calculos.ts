@@ -12,6 +12,13 @@ export function diasDoPeriodo(periodo: Periodo): string[] {
 
 const sinal = (t: Transaction) => (t.type === "income" ? t.amount : -t.amount);
 
+/**
+ * Compra no crédito não tira dinheiro na hora: ela vai juntando na fatura e
+ * só pesa no saldo quando a fatura é marcada como paga (aí vira uma conta
+ * paga, como qualquer outra).
+ */
+const noCredito = (t: Transaction) => !!t.cardId;
+
 type ComHora = Transaction & { criadaEm?: Date | null };
 
 function depoisDoAjuste(carteira: Carteira) {
@@ -34,14 +41,15 @@ function depoisDoAjuste(carteira: Carteira) {
  * pagas — a mesma conta que a tela de Finanças sempre fez.
  */
 export function saldoAtual(transacoes: ComHora[], contas: Bill[], carteira?: Carteira | null): number {
+  const noDinheiro = transacoes.filter((t) => !noCredito(t));
   if (carteira) {
     const depois = depoisDoAjuste(carteira);
     const base = carteira.saldos.reduce((s, x) => s + x.valor, 0);
-    const liquido = transacoes.filter(depois.transacao).reduce((s, t) => s + sinal(t), 0);
+    const liquido = noDinheiro.filter(depois.transacao).reduce((s, t) => s + sinal(t), 0);
     const pagas = contas.filter(depois.conta).reduce((s, c) => s + c.amount, 0);
     return base + liquido - pagas;
   }
-  const liquido = transacoes.reduce((s, t) => s + sinal(t), 0);
+  const liquido = noDinheiro.reduce((s, t) => s + sinal(t), 0);
   const pagas = contas.filter((c) => c.paid).reduce((s, c) => s + c.amount, 0);
   return liquido - pagas;
 }

@@ -12,6 +12,7 @@ import {
   Leaf,
   Moon,
   Repeat,
+  Shirt,
   ShoppingBasket,
   Ticket,
   type LucideIcon,
@@ -38,6 +39,7 @@ const CORES_CATEGORIA: Record<CategoriaTransacao, [claro: string, escuro: string
   "Saúde": ["#e8618c", "#dc4f7c"],
   "Assinaturas": ["#d9a400", "#b58800"],
   "Estudos": ["#8f208f", "#aa38ad"],
+  "Roupas": ["#b45309", "#c2660f"],
   "Outros": ["#94a3b8", "#7b8797"],
 };
 
@@ -80,6 +82,7 @@ export const ICONE_CATEGORIA: Record<CategoriaTransacao, LucideIcon> = {
   "Saúde": HeartPulse,
   "Assinaturas": Repeat,
   "Estudos": GraduationCap,
+  "Roupas": Shirt,
   "Outros": Ellipsis,
 };
 

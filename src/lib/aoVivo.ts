@@ -27,6 +27,7 @@ import {
 import { auth, db } from "./firebase";
 import { dayKey, previousDay } from "./dates";
 import { isDoneOn, type HabitUndo } from "./habits";
+import type { Cartao } from "./cartoes";
 import {
   carteiraApi,
   telegramApi,
@@ -235,7 +236,17 @@ const transacoes = criarColecao<TransacaoAoVivo>("transactions", "createdAt", "d
   type: d.type === "income" ? "income" : "expense",
   date: d.date ?? "",
   category: d.category,
+  cardId: typeof d.cardId === "string" ? d.cardId : undefined,
   criadaEm: paraData(d.createdAt),
+}));
+
+const cartoes = criarColecao<Cartao>("cards", "createdAt", "asc", (id, d) => ({
+  id,
+  nome: d.nome ?? "",
+  banco: d.banco === "nubank" || d.banco === "santander" ? d.banco : "outro",
+  fechamento: Number(d.fechamento) || 1,
+  vencimento: Number(d.vencimento) || 10,
+  criadoEm: typeof d.criadoEm === "string" ? d.criadoEm : undefined,
 }));
 
 function useColecao<T>(colecao: Colecao<T>): Estado<T> {
@@ -264,6 +275,10 @@ export function useContas() {
 
 export function useTransacoes() {
   return useColecao(transacoes);
+}
+
+export function useCartoes() {
+  return useColecao(cartoes);
 }
 
 export function useHabitos(): Estado<HabitoAoVivo> {

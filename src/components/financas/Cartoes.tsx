@@ -162,6 +162,8 @@ export function Cartoes({ aoEditarCompra }: { aoEditarCompra?: (compra: Transact
     [cartoes, transacoes, contas, hoje]
   );
 
+  const faturaSelecionada = faturas.find((f) => f.cartao.id === aberto);
+
   const pagarFatura = (fatura: (typeof faturas)[number]) =>
     executar(
       () =>
@@ -197,67 +199,76 @@ export function Cartoes({ aoEditarCompra }: { aoEditarCompra?: (compra: Transact
 
       {/* Largura travada: num monitor largo, meia tela de cartão fica enorme —
           ele tem que parecer um cartão, não um banner. */}
-      <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,300px))]">
-        {faturas.map((f) => {
-          const banco = BANCOS[f.cartao.banco];
-          const estaAberto = aberto === f.cartao.id;
-          return (
-            <div key={f.cartao.id} className="space-y-2">
+      {/* No celular os cartões deslizam de lado, um ao lado do outro, como na
+          carteira — três cartões empilhados tomavam a tela inteira. No
+          computador viram grade, com a largura travada: meia tela de cartão
+          parece banner, não cartão. */}
+      <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:snap-none sm:overflow-visible sm:px-0 sm:[grid-template-columns:repeat(auto-fill,minmax(220px,300px))]">
+        {faturas.map((f) => (
+          <button
+            key={f.cartao.id}
+            type="button"
+            onClick={() => setAberto(aberto === f.cartao.id ? null : f.cartao.id)}
+            aria-expanded={aberto === f.cartao.id}
+            className={cn(
+              "w-[230px] shrink-0 snap-start rounded-2xl text-left transition-transform active:scale-[0.98] sm:w-auto",
+              aberto === f.cartao.id && "ring-2 ring-foreground/70 ring-offset-2 ring-offset-background"
+            )}
+          >
+            <CartaoDesenho cartao={f.cartao} total={f.total} vence={f.vence} paga={f.paga} />
+          </button>
+        ))}
+      </div>
+
+      {/* As compras ficam embaixo da fileira, não dentro do cartão: assim o
+          cartão aberto não empurra os outros para fora da tela. */}
+      {faturaSelecionada && (
+        <div className="mt-3 rounded-xl bg-secondary/50 p-2">
+          <p className="px-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {nomeCompleto(faturaSelecionada.cartao)}
+          </p>
+          {faturaSelecionada.compras.length === 0 && (
+            <p className="py-3 text-center text-xs text-muted-foreground">{t("faturaSemCompras")}</p>
+          )}
+          {faturaSelecionada.compras.map((compra) => (
+            <button
+              key={compra.id}
+              type="button"
+              onClick={() => aoEditarCompra?.(compra)}
+              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-left text-sm transition-colors active:bg-background/60"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{compra.description}</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {diaMes(compra.date)} · {compra.category ?? "Outros"}
+                </span>
+              </span>
+              <span className={cn("shrink-0 font-semibold tabular-nums", compra.type === "income" && "text-emerald-500")}>
+                {compra.type === "income" ? "−" : ""} {reais(compra.amount)}
+              </span>
+            </button>
+          ))}
+
+          <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/60 px-1.5 pt-2">
+            <button
+              type="button"
+              onClick={() => setDialogo({ inicial: faturaSelecionada.cartao })}
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-background/60 hover:text-foreground"
+            >
+              {t("cartaoEditar")}
+            </button>
+            {faturaSelecionada.total > 0 && !faturaSelecionada.paga && (
               <button
                 type="button"
-                onClick={() => setAberto(estaAberto ? null : f.cartao.id)}
-                aria-expanded={estaAberto}
-                className="w-full text-left transition-transform active:scale-[0.98]"
+                onClick={() => pagarFatura(faturaSelecionada)}
+                className="rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
               >
-                <CartaoDesenho cartao={f.cartao} total={f.total} vence={f.vence} paga={f.paga} />
+                {t("faturaMarcarPaga")}
               </button>
-
-              {estaAberto && (
-                <div className="rounded-xl bg-secondary/50 p-2">
-                  {f.compras.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">{t("faturaSemCompras")}</p>}
-                  {f.compras.map((compra) => (
-                    <button
-                      key={compra.id}
-                      type="button"
-                      onClick={() => aoEditarCompra?.(compra)}
-                      className="flex w-full items-center gap-2 rounded-lg p-1.5 text-left text-sm transition-colors active:bg-background/60"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{compra.description}</span>
-                        <span className="block text-[11px] text-muted-foreground">
-                          {diaMes(compra.date)} · {compra.category ?? "Outros"}
-                        </span>
-                      </span>
-                      <span className={cn("shrink-0 font-semibold tabular-nums", compra.type === "income" && "text-emerald-500")}>
-                        {compra.type === "income" ? "−" : ""} {reais(compra.amount)}
-                      </span>
-                    </button>
-                  ))}
-
-                  <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/60 px-1.5 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setDialogo({ inicial: f.cartao })}
-                      className="rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                    >
-                      {t("cartaoEditar")}
-                    </button>
-                    {f.total > 0 && !f.paga && (
-                      <button
-                        type="button"
-                        onClick={() => pagarFatura(f)}
-                        className="rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
-                      >
-                        {t("faturaMarcarPaga")}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <CartaoDialog aberto={!!dialogo} inicial={dialogo?.inicial} onFechar={() => setDialogo(null)} />
     </section>

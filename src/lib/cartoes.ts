@@ -118,6 +118,9 @@ export function nomeDaFatura(cartao: Pick<Cartao, "nome" | "banco">, faturaMes: 
   return `Fatura ${nomeCompleto(cartao)} · ${mes}/${ano}`;
 }
 
+/** A fatura não é uma conta de verdade: nasceu da soma das compras do cartão. */
+export const ehFatura = (id: string) => id.startsWith("fatura:");
+
 /** O que a lista de contas a pagar precisa saber sobre uma fatura em aberto. */
 export interface FaturaEmAberto {
   /** "fatura:<cardId>:<YYYY-MM>" — não existe no banco, é calculada na hora. */

@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { useLocale } from "@/contexts/LocaleContext";
 import { executar } from "@/lib/acoes";
 import { billsApi, type Bill } from "@/lib/db";
-import { useContas } from "@/lib/aoVivo";
+import { useContasComFaturas } from "@/lib/aoVivo";
+import { ehFatura } from "@/lib/cartoes";
 import { dayKey } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { agruparPorMes, situacaoDe, vencimentoDe, type Situacao } from "../contas";
@@ -109,7 +110,28 @@ function LinhaConta({ conta, vencimento, onEditar, onExcluir }: { conta: Bill; v
   const dinheiro = useDinheiro();
   const rotulos = useRotulosConta();
   const { situacao, dias } = situacaoDe(conta);
-  const alternar = () => executar(() => billsApi.update(conta.id, { paid: !conta.paid }), { erro: t("erroAoSalvar") });
+  // Fatura de cartão não mora no banco: não dá para editar nem excluir, e
+  // marcar como paga é criar a conta paga que desconta do saldo.
+  const fatura = ehFatura(conta.id);
+  const alternar = () =>
+    executar(
+      async () => {
+        if (!fatura) {
+          await billsApi.update(conta.id, { paid: !conta.paid });
+          return;
+        }
+        await billsApi.create({
+          name: conta.name,
+          amount: conta.amount,
+          dueDate: conta.dueDate,
+          vencimento: conta.vencimento,
+          category: conta.category,
+          tipo: "cartao",
+          paid: true,
+        });
+      },
+      { erro: t("erroAoSalvar") }
+    );
 
   return (
     <li className="group flex items-center gap-3.5 rounded-2xl px-2 py-2.5 transition-colors hover:bg-secondary/60">
@@ -146,14 +168,16 @@ function LinhaConta({ conta, vencimento, onEditar, onExcluir }: { conta: Bill; v
         >
           <Check className="h-4 w-4" strokeWidth={3} />
         </button>
-        <div className="flex w-0 overflow-hidden opacity-0 transition-all group-focus-within:w-16 group-focus-within:opacity-100 group-hover:w-16 group-hover:opacity-100">
-          <BotaoIcone rotulo={t("financesEditBill")} onClick={onEditar}>
-            <Pencil className="h-3.5 w-3.5" />
-          </BotaoIcone>
-          <BotaoIcone rotulo={t("financesDeleteBill")} onClick={onExcluir} className="hover:text-destructive">
-            <Trash2 className="h-3.5 w-3.5" />
-          </BotaoIcone>
-        </div>
+        {!fatura && (
+          <div className="flex w-0 overflow-hidden opacity-0 transition-all group-focus-within:w-16 group-focus-within:opacity-100 group-hover:w-16 group-hover:opacity-100">
+            <BotaoIcone rotulo={t("financesEditBill")} onClick={onEditar}>
+              <Pencil className="h-3.5 w-3.5" />
+            </BotaoIcone>
+            <BotaoIcone rotulo={t("financesDeleteBill")} onClick={onExcluir} className="hover:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" />
+            </BotaoIcone>
+          </div>
+        )}
       </div>
     </li>
   );
@@ -165,7 +189,7 @@ export function ContasCard({ className }: { className?: string }) {
   const cores = useCores();
   const dinheiro = useDinheiro();
   const rotulos = useRotulosConta();
-  const { itens, pronto } = useContas();
+  const { itens, pronto } = useContasComFaturas();
   const [filtro, setFiltro] = useState<Filtro>("abertas");
   const [todosMeses, setTodosMeses] = useState(false);
   const [dialogo, setDialogo] = useState<{ aberto: boolean; conta?: Bill }>({ aberto: false });

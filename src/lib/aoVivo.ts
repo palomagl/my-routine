@@ -27,7 +27,7 @@ import {
 import { auth, db } from "./firebase";
 import { dayKey, previousDay } from "./dates";
 import { isDoneOn, type HabitUndo } from "./habits";
-import type { Cartao } from "./cartoes";
+import { faturasEmAberto, type Cartao } from "./cartoes";
 import {
   carteiraApi,
   telegramApi,
@@ -279,6 +279,28 @@ export function useTransacoes() {
 
 export function useCartoes() {
   return useColecao(cartoes);
+}
+
+/**
+ * As contas a pagar com as faturas dos cartões no meio.
+ *
+ * A fatura não existe no banco: é a soma das compras daquele cartão. Entra na
+ * lista porque é ali que ela é vista ("o que eu tenho pra pagar"), e sai
+ * sozinha quando é marcada como paga — aí vira uma conta paga de verdade.
+ */
+export function useContasComFaturas(): Estado<Bill> {
+  const asContas = useColecao(contas);
+  const osCartoes = useColecao(cartoes);
+  const asTransacoes = useColecao(transacoes);
+
+  const itens = useMemo(() => {
+    if (osCartoes.itens.length === 0) return asContas.itens;
+    const pagas = new Set(asContas.itens.filter((c) => c.paid).map((c) => c.name));
+    const faturas = faturasEmAberto(osCartoes.itens, asTransacoes.itens, (nome) => pagas.has(nome), dayKey());
+    return [...asContas.itens, ...(faturas as unknown as Bill[])];
+  }, [asContas.itens, osCartoes.itens, asTransacoes.itens]);
+
+  return { itens, pronto: asContas.pronto };
 }
 
 export function useHabitos(): Estado<HabitoAoVivo> {

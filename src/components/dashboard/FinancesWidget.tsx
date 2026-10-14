@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { ArrowDownToLine, ArrowUpToLine, CalendarClock, Check, ChevronDown, Pencil, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import type { Bill, Transaction } from "@/lib/db";
 import { billsApi } from "@/lib/db";
-import { useCarteira, useCartoes, useContas, useTransacoes } from "@/lib/aoVivo";
-import { faturasEmAberto } from "@/lib/cartoes";
+import { useCarteira, useContasComFaturas, useTransacoes } from "@/lib/aoVivo";
+import { ehFatura } from "@/lib/cartoes";
 import { dayKey } from "@/lib/dates";
 import { executar } from "@/lib/acoes";
 import { cn } from "@/lib/utils";
@@ -37,15 +37,12 @@ type Dialogo =
 
 const POUCAS = 4;
 
-/** Fatura de cartão: não existe no banco, então não dá para editar nem desmarcar. */
-const ehFatura = (conta: Bill) => conta.id.startsWith("fatura:");
 
 export function FinancesWidget() {
   const { t, locale } = useLocale();
   const rotulos = useRotulosConta();
-  const contas = useContas().itens;
+  const contas = useContasComFaturas().itens;
   const transacoes = useTransacoes().itens;
-  const cartoes = useCartoes().itens;
   const carteira = useCarteira();
   const [todasContas, setTodasContas] = useState(false);
   const [verPagas, setVerPagas] = useState(false);
@@ -56,16 +53,7 @@ export function FinancesWidget() {
   const d = useMemo(() => {
     const mes = totaisDoMes(transacoes, hoje.slice(0, 7));
     const fimDoMes = `${hoje.slice(0, 7)}-31`;
-    // As faturas em aberto entram na lista como contas: elas não existem no
-    // banco (são a soma das compras do cartão), mas é no meio do aluguel e da
-    // internet que ela quer ver quanto o cartão já deve.
-    const pagas = new Set(contas.filter((c) => c.paid).map((c) => c.name));
-    const faturas = faturasEmAberto(cartoes, transacoes, (nome) => pagas.has(nome), hoje);
-    const comData = [...contas, ...(faturas as unknown as Bill[])].map((c) => ({
-      conta: c,
-      vencimento: vencimentoDe(c, hoje),
-      ...situacaoDe(c, hoje),
-    }));
+    const comData = contas.map((c) => ({ conta: c, vencimento: vencimentoDe(c, hoje), ...situacaoDe(c, hoje) }));
     return {
       entradas: mes.entradas,
       gastos: mes.gastos,
@@ -74,14 +62,14 @@ export function FinancesWidget() {
       abertas: comData.filter((x) => !x.conta.paid).sort((a, b) => a.vencimento.localeCompare(b.vencimento)),
       pagas: comData.filter((x) => x.conta.paid).sort((a, b) => b.vencimento.localeCompare(a.vencimento)),
     };
-  }, [transacoes, contas, cartoes, carteira, hoje]);
+  }, [transacoes, contas, carteira, hoje]);
 
   // Pagar uma fatura não é "marcar como paga": ela vira uma conta paga de
   // verdade, e é essa conta que desconta do saldo. O resto é como sempre.
   const alternarPaga = (conta: Bill) =>
     executar(
       async () => {
-        if (!ehFatura(conta)) {
+        if (!ehFatura(conta.id)) {
           await billsApi.update(conta.id, { paid: !conta.paid });
           return;
         }
@@ -211,7 +199,7 @@ export function FinancesWidget() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => !ehFatura(conta) && setDialogo({ tipo: "conta", inicial: conta })}
+                  onClick={() => !ehFatura(conta.id) && setDialogo({ tipo: "conta", inicial: conta })}
                   className="min-w-0 flex-1 text-left"
                 >
                   <span className="flex items-baseline justify-between gap-2">

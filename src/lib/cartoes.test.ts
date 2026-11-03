@@ -3,6 +3,8 @@ import {
   acharCartaoNoTexto,
   comprasDaFatura,
   faturaDaCompra,
+  ehFatura,
+  faturaDoCartao,
   faturasEmAberto,
   nomeDaFatura,
   totalDaFatura,
@@ -87,6 +89,16 @@ describe("faturas em aberto viram contas a pagar", () => {
     const registrada = (n: string) => n === "Fatura Nubank · Paloma · 10/2026";
     const faturas = faturasEmAberto([paloma, neuzaNu], compras, registrada, "2026-10-10");
     expect(faturas.map((f) => f.name)).toEqual(["Fatura Nubank · Neuza · 10/2026"]);
+  });
+
+  it("monta a fatura mesmo com total zero, para dar para digitar o valor", () => {
+    // Quem não lança as compras tem fatura zerada no cálculo. Sem este caminho
+    // não haveria por onde abrir o formulário e escrever o valor de verdade.
+    const vazia = faturaDoCartao(neuzaSan, "2026-11", 0);
+    expect(vazia.amount).toBe(0);
+    expect(vazia.name).toBe("Fatura Santander · Neuza · 11/2026");
+    expect(ehFatura(vazia.id)).toBe(true);
+    expect(vazia.cartaoId).toBe(neuzaSan.id);
   });
 
   it("cartão sem compra nenhuma não vira conta a pagar", () => {

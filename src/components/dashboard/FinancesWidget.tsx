@@ -292,7 +292,10 @@ export function FinancesWidget() {
       </section>
 
       {/* 6. Cartões de crédito */}
-      <Cartoes aoEditarCompra={(compra) => setDialogo({ tipo: "transacao", inicial: compra })} />
+      <Cartoes
+        aoEditarCompra={(compra) => setDialogo({ tipo: "transacao", inicial: compra })}
+        aoEditarFatura={(conta) => setDialogo({ tipo: "conta", inicial: conta })}
+      />
 
       <TransacaoDialog
         aberto={dialogo?.tipo === "transacao"}

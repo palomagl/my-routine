@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAcaoUnica } from "@/hooks/useAcaoUnica";
 import { CreditCard, Plus } from "lucide-react";
-import { billsApi, type Transaction } from "@/lib/db";
+import { billsApi, type Bill, type Transaction } from "@/lib/db";
 import {
   BANCOS,
   comprasDaFatura,
   faturaAberta,
   faturaDaCompra,
+  faturaDoCartao,
   nomeCompleto,
   nomeDaFatura,
   totalDaFatura,
@@ -139,9 +140,16 @@ function MarcaDoBanco({ banco }: { banco: BancoCartao }) {
 
 export function Cartoes({
   aoEditarCompra,
+  aoEditarFatura,
   abrirCartao,
 }: {
   aoEditarCompra?: (compra: Transaction) => void;
+  /**
+   * Abre o formulário da fatura deste cartão. Recebe a conta gravada quando já
+   * existe, ou uma fatura montada na hora — inclusive com total zero, para dar
+   * para digitar o valor de um cartão sem compra lançada.
+   */
+  aoEditarFatura?: (conta: Bill) => void;
   /**
    * Abre direto neste cartão. Serve para quem toca na fatura em "contas a
    * pagar" cair nas compras que formam o valor — que é onde dá para corrigi-lo.
@@ -165,13 +173,21 @@ export function Cartoes({
       cartoes.map((cartao) => {
         const mes = faturaAberta(cartao, hoje);
         const nome = nomeDaFatura(cartao, mes);
+        const somaDasCompras = totalDaFatura(transacoes, cartao, mes);
+        // Se existe conta gravada para esta fatura, é ela que vale — inclusive
+        // no desenho do cartão. Antes o cartão mostrava a soma das compras e a
+        // lista de contas mostrava o valor digitado: dois números para a mesma
+        // fatura, e nenhum jeito de saber qual era o certo.
+        const registrada = contas.find((c) => c.name === nome) ?? null;
         return {
           cartao,
           mes,
-          total: totalDaFatura(transacoes, cartao, mes),
+          total: registrada ? registrada.amount : somaDasCompras,
+          somaDasCompras,
+          registrada,
           vence: vencimentoDaFatura(mes, cartao),
           compras: comprasDaFatura(transacoes, cartao, mes),
-          paga: contas.some((c) => c.name === nome && c.paid),
+          paga: !!registrada?.paid,
         };
       }),
     [cartoes, transacoes, contas, hoje]
@@ -268,13 +284,29 @@ export function Cartoes({
           ))}
 
           <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/60 px-1.5 pt-2">
-            <button
-              type="button"
-              onClick={() => setDialogo({ inicial: faturaSelecionada.cartao })}
-              className="rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-background/60 hover:text-foreground"
-            >
-              {t("cartaoEditar")}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setDialogo({ inicial: faturaSelecionada.cartao })}
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-background/60 hover:text-foreground"
+              >
+                {t("cartaoEditar")}
+              </button>
+              {aoEditarFatura && !faturaSelecionada.paga && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    aoEditarFatura(
+                      faturaSelecionada.registrada ??
+                        faturaDoCartao(faturaSelecionada.cartao, faturaSelecionada.mes, faturaSelecionada.somaDasCompras)
+                    )
+                  }
+                  className="rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                >
+                  {t("faturaDefinirValor")}
+                </button>
+              )}
+            </div>
             {faturaSelecionada.total > 0 && !faturaSelecionada.paga && (
               <button
                 type="button"

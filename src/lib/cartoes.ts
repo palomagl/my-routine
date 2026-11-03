@@ -149,6 +149,29 @@ export interface FaturaEmAberto {
  * a soma das compras seria sempre menor que a fatura real, e insistir nela
  * daria um número errado com cara de certo.
  */
+/**
+ * A fatura de um cartão num mês, no formato das contas a pagar.
+ *
+ * Monta mesmo com total zero: é o que permite abrir o formulário e digitar o
+ * valor de um cartão onde nenhuma compra foi lançada — sem isso, quem não
+ * anota os gastos não teria por onde começar.
+ */
+export function faturaDoCartao(cartao: Cartao, mes: string, total: number): FaturaEmAberto {
+  const vence = vencimentoDaFatura(mes, cartao);
+  return {
+    id: `fatura:${cartao.id}:${mes}`,
+    name: nomeDaFatura(cartao, mes),
+    amount: total,
+    dueDate: String(Number(vence.slice(8))),
+    vencimento: vence,
+    category: "Outros",
+    tipo: "cartao",
+    paid: false,
+    cartaoId: cartao.id,
+    faturaMes: mes,
+  };
+}
+
 export function faturasEmAberto<T extends CompraMinima, C extends Cartao>(
   cartoes: C[],
   compras: T[],
@@ -159,21 +182,8 @@ export function faturasEmAberto<T extends CompraMinima, C extends Cartao>(
   for (const cartao of cartoes) {
     const mes = faturaAberta(cartao, hoje);
     const total = totalDaFatura(compras, cartao, mes);
-    const nome = nomeDaFatura(cartao, mes);
-    if (total <= 0 || jaRegistrada(nome)) continue;
-    const vence = vencimentoDaFatura(mes, cartao);
-    faturas.push({
-      id: `fatura:${cartao.id}:${mes}`,
-      name: nome,
-      amount: total,
-      dueDate: String(Number(vence.slice(8))),
-      vencimento: vence,
-      category: "Outros",
-      tipo: "cartao",
-      paid: false,
-      cartaoId: cartao.id,
-      faturaMes: mes,
-    });
+    if (total <= 0 || jaRegistrada(nomeDaFatura(cartao, mes))) continue;
+    faturas.push(faturaDoCartao(cartao, mes, total));
   }
   return faturas.sort((a, b) => a.vencimento.localeCompare(b.vencimento));
 }

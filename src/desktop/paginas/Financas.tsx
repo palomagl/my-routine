@@ -18,6 +18,8 @@ import { LancarRapido } from "../cards/Lancar";
 import { TransacoesCard } from "../cards/Transacoes";
 import { TelegramFaixa } from "../cards/Extras";
 import { Cartoes } from "@/components/financas/Cartoes";
+import { ContaDialog } from "../Formularios";
+import type { Bill } from "@/lib/db";
 
 function Kpis() {
   const { t } = useLocale();
@@ -109,6 +111,9 @@ export default function FinancasDesktop() {
   // Tocar numa fatura em "contas a pagar" não tem o que editar: o valor é a
   // soma das compras do cartão. Em vez de não fazer nada, abre o cartão aqui
   // embaixo, com as compras — que é onde o valor se corrige.
+  // O formulário da fatura é aberto daqui porque o botão que o chama mora na
+  // seção dos cartões, e o diálogo de contas vive no card ao lado.
+  const [faturaEmEdicao, setFaturaEmEdicao] = useState<Bill | null>(null);
   const [cartaoAberto, setCartaoAberto] = useState<string | null>(null);
   const areaDosCartoes = useRef<HTMLDivElement>(null);
   const verFatura = (cartaoId: string) => {
@@ -144,10 +149,16 @@ export default function FinancasDesktop() {
         </div>
         <ContasCard aoVerFatura={verFatura} />
         <div ref={areaDosCartoes}>
-          <Cartoes abrirCartao={cartaoAberto} />
+          <Cartoes abrirCartao={cartaoAberto} aoEditarFatura={setFaturaEmEdicao} />
         </div>
         <TelegramFaixa />
       </div>
+
+      <ContaDialog
+        aberto={!!faturaEmEdicao}
+        inicial={faturaEmEdicao ?? undefined}
+        onFechar={() => setFaturaEmEdicao(null)}
+      />
     </>
   );
 }

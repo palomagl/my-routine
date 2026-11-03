@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useAcaoUnica } from "@/hooks/useAcaoUnica";
 import {
   AlertTriangle,
   ArrowRight,
@@ -126,7 +127,9 @@ function LinhaConta({
   // Fatura de cartão não mora no banco: não dá para editar nem excluir, e
   // marcar como paga é criar a conta paga que desconta do saldo.
   const fatura = ehFatura(conta.id);
-  const alternar = () =>
+  // Marcar fatura como paga cria uma conta. Sem trava, dois toques criavam
+  // duas — e ela aparecia duplicada na lista.
+  const { disparar: alternar, ocupado: alternando } = useAcaoUnica(() =>
     executar(
       async () => {
         if (!fatura) {
@@ -144,7 +147,8 @@ function LinhaConta({
         });
       },
       { erro: t("erroAoSalvar") }
-    );
+    )
+  );
 
   return (
     <li className="group flex items-center gap-3.5 rounded-2xl px-2 py-2.5 transition-colors hover:bg-secondary/60">
@@ -169,7 +173,8 @@ function LinhaConta({
       <div className="flex shrink-0 items-center gap-0.5">
         <button
           type="button"
-          onClick={alternar}
+          onClick={() => alternar()}
+          disabled={alternando}
           title={conta.paid ? t("financesMarkUnpaid") : t("financesMarkPaid")}
           aria-label={`${conta.paid ? t("financesMarkUnpaid") : t("financesMarkPaid")}: ${conta.name}`}
           className={cn(

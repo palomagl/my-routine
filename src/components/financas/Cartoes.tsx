@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAcaoUnica } from "@/hooks/useAcaoUnica";
 import { CreditCard, Plus } from "lucide-react";
 import { billsApi, type Transaction } from "@/lib/db";
 import {
@@ -178,7 +179,9 @@ export function Cartoes({
 
   const faturaSelecionada = faturas.find((f) => f.cartao.id === aberto);
 
-  const pagarFatura = (fatura: (typeof faturas)[number]) =>
+  // Sem trava, dois toques criavam duas contas pagas com o mesmo nome — e a
+  // fatura aparecia duplicada na lista de contas a pagar.
+  const { disparar: pagarFatura, ocupado: pagando } = useAcaoUnica((fatura: (typeof faturas)[number]) =>
     executar(
       () =>
         billsApi.create({
@@ -191,7 +194,8 @@ export function Cartoes({
           paid: true,
         }),
       { erro: t("erroAoSalvar") }
-    );
+    )
+  );
 
   return (
     <section className="glass-card rounded-2xl p-4">
@@ -275,7 +279,8 @@ export function Cartoes({
               <button
                 type="button"
                 onClick={() => pagarFatura(faturaSelecionada)}
-                className="rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                disabled={pagando}
+                className="rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-600 disabled:opacity-50 dark:text-emerald-400"
               >
                 {t("faturaMarcarPaga")}
               </button>

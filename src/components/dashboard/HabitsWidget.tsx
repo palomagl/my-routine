@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAcaoUnica } from "@/hooks/useAcaoUnica";
 import { Droplet, Dumbbell, BookOpen, Moon, Coffee, Leaf, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,8 @@ export function HabitsWidget() {
     setHabits(habits.map(h => h.id === id ? atualizado : h));
   };
 
-  const addHabit = async () => {
+  // Uma criação por vez: Enter repetido ou toque duplo criava hábitos iguais.
+  const { disparar: addHabit, ocupado: adicionando } = useAcaoUnica(async () => {
     if (!newName.trim()) return;
     const habit = await executar(
       () => habitsApi.create({ name: newName.trim(), icon: newIcon, completed: false, streak: 0 }),
@@ -39,7 +41,7 @@ export function HabitsWidget() {
     setNewName("");
     setNewIcon("Leaf");
     setShowAddForm(false);
-  };
+  });
 
   const completedCount = habits.filter(h => h.completed).length;
 
@@ -86,7 +88,7 @@ export function HabitsWidget() {
               );
             })}
           </div>
-          <Button type="button" onClick={addHabit} size="sm" className="w-full bg-widget-habits hover:bg-widget-habits/90">
+          <Button type="button" onClick={() => addHabit()} disabled={adicionando} size="sm" className="w-full bg-widget-habits hover:bg-widget-habits/90">
             {t("habitsAdd")}
           </Button>
         </div>

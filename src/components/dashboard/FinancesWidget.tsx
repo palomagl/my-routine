@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import { useAcaoUnica } from "@/hooks/useAcaoUnica";
 import { ArrowDownToLine, ArrowUpToLine, CalendarClock, Check, ChevronDown, Pencil, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import type { Bill, Transaction } from "@/lib/db";
 import { billsApi } from "@/lib/db";
@@ -67,7 +68,10 @@ export function FinancesWidget() {
 
   // Pagar uma fatura não é "marcar como paga": ela vira uma conta paga de
   // verdade, e é essa conta que desconta do saldo. O resto é como sempre.
-  const alternarPaga = (conta: Bill) =>
+  //
+  // Com trava de um toque por vez: sem ela, tocar duas vezes criava duas contas
+  // com o mesmo nome — a duplicação que aparecia na lista de contas a pagar.
+  const { disparar: alternarPaga, ocupado: alternando } = useAcaoUnica((conta: Bill) =>
     executar(
       async () => {
         if (!ehFatura(conta.id)) {
@@ -85,7 +89,8 @@ export function FinancesWidget() {
         });
       },
       { erro: t("erroAoSalvar") }
-    );
+    )
+  );
 
   const fechar = () => setDialogo(null);
   const listaContas = verPagas ? d.pagas : d.abertas;
@@ -219,6 +224,7 @@ export function FinancesWidget() {
                 <button
                   type="button"
                   onClick={() => alternarPaga(conta)}
+                  disabled={alternando}
                   aria-label={conta.paid ? t("financesMarkUnpaid") : t("financesMarkPaid")}
                   className={cn(
                     "grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 transition-colors",

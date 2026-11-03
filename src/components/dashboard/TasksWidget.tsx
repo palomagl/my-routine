@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAcaoUnica } from "@/hooks/useAcaoUnica";
 import { Plus, Circle, CheckCircle2, Trash2, X, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +54,8 @@ export function TasksWidget() {
     setTasks(tasks.filter(t => t.id !== id));
   };
 
-  const addTask = async () => {
+  // Uma criação por vez: Enter repetido ou toque duplo criava tarefas iguais.
+  const { disparar: addTask, ocupado: adicionando } = useAcaoUnica(async () => {
     if (!newTask.trim()) return;
     const task = await executar(
       () => tasksApi.create({ title: newTask.trim(), completed: false, category: newCategory }),
@@ -64,7 +66,7 @@ export function TasksWidget() {
     setNewTask("");
     setNewCategory("Geral");
     setShowAddForm(false);
-  };
+  });
 
   const startEditing = (task: Task) => {
     setEditingId(task.id);
@@ -137,7 +139,7 @@ export function TasksWidget() {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={addTask} size="sm" className="bg-widget-tasks hover:bg-widget-tasks/90">
+            <Button onClick={() => addTask()} disabled={adicionando} size="sm" className="bg-widget-tasks hover:bg-widget-tasks/90">
               {t("tasksAdd")}
             </Button>
           </div>

@@ -6,6 +6,7 @@ import {
   ehFatura,
   faturaDoCartao,
   faturasEmAberto,
+  resumoDaFatura,
   nomeDaFatura,
   totalDaFatura,
   vencimentoDaFatura,
@@ -89,6 +90,26 @@ describe("faturas em aberto viram contas a pagar", () => {
     const registrada = (n: string) => n === "Fatura Nubank · Paloma · 10/2026";
     const faturas = faturasEmAberto([paloma, neuzaNu], compras, registrada, "2026-10-10");
     expect(faturas.map((f) => f.name)).toEqual(["Fatura Nubank · Neuza · 10/2026"]);
+  });
+
+  it("o valor digitado manda no cartão, não a soma das compras", () => {
+    // O caso real: Nubank da Neuza, fecha dia 14, R$ 20 de compras lançadas,
+    // e a fatura de verdade é R$ 124 — digitada na mão.
+    const neuza = { ...neuzaNu, fechamento: 14, vencimento: 18 };
+    const lancadas = [{ amount: 20, type: "expense" as const, date: "2026-11-02", cardId: neuza.id }];
+    const gravadas = [{ name: "Fatura Nubank · Neuza · 11/2026", amount: 124, paid: false }];
+
+    const r = resumoDaFatura(neuza, lancadas, gravadas, "2026-11-03");
+    expect(r.mes).toBe("2026-11");
+    expect(r.somaDasCompras).toBe(20);
+    expect(r.total).toBe(124);
+    expect(r.registrada?.amount).toBe(124);
+  });
+
+  it("sem conta gravada, o cartão mostra a soma das compras", () => {
+    const neuza = { ...neuzaNu, fechamento: 14, vencimento: 18 };
+    const lancadas = [{ amount: 20, type: "expense" as const, date: "2026-11-02", cardId: neuza.id }];
+    expect(resumoDaFatura(neuza, lancadas, [], "2026-11-03").total).toBe(20);
   });
 
   it("monta a fatura mesmo com total zero, para dar para digitar o valor", () => {

@@ -10,6 +10,7 @@ import {
   faturaDoCartao,
   nomeCompleto,
   nomeDaFatura,
+  resumoDaFatura,
   totalDaFatura,
   vencimentoDaFatura,
   type BancoCartao,
@@ -170,26 +171,14 @@ export function Cartoes({
   const hoje = dayKey();
   const faturas = useMemo(
     () =>
-      cartoes.map((cartao) => {
-        const mes = faturaAberta(cartao, hoje);
-        const nome = nomeDaFatura(cartao, mes);
-        const somaDasCompras = totalDaFatura(transacoes, cartao, mes);
-        // Se existe conta gravada para esta fatura, é ela que vale — inclusive
-        // no desenho do cartão. Antes o cartão mostrava a soma das compras e a
-        // lista de contas mostrava o valor digitado: dois números para a mesma
-        // fatura, e nenhum jeito de saber qual era o certo.
-        const registrada = contas.find((c) => c.name === nome) ?? null;
-        return {
-          cartao,
-          mes,
-          total: registrada ? registrada.amount : somaDasCompras,
-          somaDasCompras,
-          registrada,
-          vence: vencimentoDaFatura(mes, cartao),
-          compras: comprasDaFatura(transacoes, cartao, mes),
-          paga: !!registrada?.paid,
-        };
-      }),
+      // resumoDaFatura mora na lib, e não aqui, porque a lista de contas a
+      // pagar precisa chegar ao mesmo número. Quando cada tela fazia a sua
+      // conta, uma mostrava R$ 20 e a outra R$ 124 para a mesma fatura.
+      cartoes.map((cartao) => ({
+        cartao,
+        ...resumoDaFatura(cartao, transacoes, contas, hoje),
+        compras: comprasDaFatura(transacoes, cartao, faturaAberta(cartao, hoje)),
+      })),
     [cartoes, transacoes, contas, hoje]
   );
 

@@ -172,6 +172,48 @@ export function faturaDoCartao(cartao: Cartao, mes: string, total: number): Fatu
   };
 }
 
+/** O que a tela precisa saber sobre a fatura aberta de um cartão. */
+export interface ResumoDaFatura<B> {
+  mes: string;
+  nome: string;
+  /** O que o app calculou somando as compras lançadas. */
+  somaDasCompras: number;
+  /** A conta gravada para esta fatura, se existir. É ela que manda. */
+  registrada: B | null;
+  /** O valor a mostrar: o da conta gravada, ou a soma das compras. */
+  total: number;
+  vence: string;
+  paga: boolean;
+}
+
+/**
+ * Junta o cálculo com o que foi gravado, numa resposta só.
+ *
+ * Mora aqui, e não dentro do componente, porque o desenho do cartão e a lista
+ * de contas a pagar precisam concordar — quando cada tela fazia a sua conta,
+ * uma mostrava R$ 20 e a outra R$ 124 para a mesma fatura.
+ */
+export function resumoDaFatura<T extends CompraMinima, B extends { name: string; amount: number; paid?: boolean }>(
+  cartao: Cartao,
+  compras: T[],
+  contas: B[],
+  hoje: string
+): ResumoDaFatura<B> {
+  const mes = faturaAberta(cartao, hoje);
+  const nome = nomeDaFatura(cartao, mes);
+  const somaDasCompras = totalDaFatura(compras, cartao, mes);
+  const registrada = contas.find((c) => c.name === nome) ?? null;
+  return {
+    mes,
+    nome,
+    somaDasCompras,
+    registrada,
+    total: registrada ? registrada.amount : somaDasCompras,
+    vence: vencimentoDaFatura(mes, cartao),
+    paga: !!registrada?.paid,
+  };
+}
+
 export function faturasEmAberto<T extends CompraMinima, C extends Cartao>(
   cartoes: C[],
   compras: T[],

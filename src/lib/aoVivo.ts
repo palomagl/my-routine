@@ -295,8 +295,11 @@ export function useContasComFaturas(): Estado<Bill> {
 
   const itens = useMemo(() => {
     if (osCartoes.itens.length === 0) return asContas.itens;
-    const pagas = new Set(asContas.itens.filter((c) => c.paid).map((c) => c.name));
-    const faturas = faturasEmAberto(osCartoes.itens, asTransacoes.itens, (nome) => pagas.has(nome), dayKey());
+    // Qualquer conta gravada com o nome da fatura — paga ou não — faz o cálculo
+    // se calar. É isso que deixa o valor digitado na mão valer mais do que a
+    // soma das compras, para quem não anota todas.
+    const registradas = new Set(asContas.itens.map((c) => c.name));
+    const faturas = faturasEmAberto(osCartoes.itens, asTransacoes.itens, (nome) => registradas.has(nome), dayKey());
     return [...asContas.itens, ...(faturas as unknown as Bill[])];
   }, [asContas.itens, osCartoes.itens, asTransacoes.itens]);
 

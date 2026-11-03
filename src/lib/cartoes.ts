@@ -138,16 +138,21 @@ export interface FaturaEmAberto {
 }
 
 /**
- * As faturas que ainda não foram pagas, no formato das contas a pagar — é o
- * que faz a fatura do cartão aparecer junto do aluguel e da internet.
+ * As faturas calculadas a partir das compras, no formato das contas a pagar —
+ * é o que faz a fatura do cartão aparecer junto do aluguel e da internet.
  *
- * `jaPaga` diz se já existe uma conta paga com aquele nome (quem paga a
- * fatura na tela cria essa conta, e aí a fatura some daqui).
+ * `jaRegistrada` diz se já existe uma conta de verdade com aquele nome. Quando
+ * existe, o cálculo se cala e quem vale é a conta gravada: ou porque a pessoa
+ * pagou a fatura, ou porque digitou o valor na mão.
+ *
+ * Esse segundo caso é o que importa para quem não anota toda compra do cartão:
+ * a soma das compras seria sempre menor que a fatura real, e insistir nela
+ * daria um número errado com cara de certo.
  */
 export function faturasEmAberto<T extends CompraMinima, C extends Cartao>(
   cartoes: C[],
   compras: T[],
-  jaPaga: (nome: string) => boolean,
+  jaRegistrada: (nome: string) => boolean,
   hoje: string
 ): FaturaEmAberto[] {
   const faturas: FaturaEmAberto[] = [];
@@ -155,7 +160,7 @@ export function faturasEmAberto<T extends CompraMinima, C extends Cartao>(
     const mes = faturaAberta(cartao, hoje);
     const total = totalDaFatura(compras, cartao, mes);
     const nome = nomeDaFatura(cartao, mes);
-    if (total <= 0 || jaPaga(nome)) continue;
+    if (total <= 0 || jaRegistrada(nome)) continue;
     const vence = vencimentoDaFatura(mes, cartao);
     faturas.push({
       id: `fatura:${cartao.id}:${mes}`,

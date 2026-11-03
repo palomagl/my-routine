@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLocale } from "@/contexts/LocaleContext";
 import { executar } from "@/lib/acoes";
 import { useCartoes, useContas } from "@/lib/aoVivo";
-import { BANCOS, nomeCompleto, type BancoCartao, type Cartao } from "@/lib/cartoes";
+import { BANCOS, ehFatura, nomeCompleto, type BancoCartao, type Cartao } from "@/lib/cartoes";
 import { ICONES_META, lerMeta, lerNumero, mesCurto, progressoDe, somarMesesAoMes, sugerirIcone, textosLegados, type TipoMeta } from "@/lib/metas";
 import { useTextosMeta } from "@/components/metas/Metas";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -470,11 +470,16 @@ export function ContaDialog({ aberto, onFechar, inicial }: { aberto: boolean; on
 
   const categorias = CATEGORIAS_CONTA.includes(categoria) ? CATEGORIAS_CONTA : [...CATEGORIAS_CONTA, categoria];
 
+  // Fatura de cartão não existe no banco: é a soma das compras. Editá-la não é
+  // atualizar um registro, é criar a conta de verdade daquele mês — e a partir
+  // daí o valor digitado passa a valer no lugar do cálculo.
+  const ehFaturaCalculada = !!inicial && ehFatura(inicial.id);
+
   const salvar = async () => {
     setSalvando(true);
     const ok = await executar(
       async () => {
-        if (inicial) {
+        if (inicial && !ehFaturaCalculada) {
           const mudancas = { name: nome.trim(), amount: numero, category: categoria, tipo: tipoFinal };
           await billsApi.update(inicial.id, { ...mudancas, vencimento, dueDate: String(Number(vencimento.slice(8))) });
           if (nasProximas) await Promise.all(proximas.map((c) => billsApi.update(c.id, mudancas)));
@@ -490,7 +495,9 @@ export function ContaDialog({ aberto, onFechar, inicial }: { aberto: boolean; on
   };
 
   const excluir = async () => {
-    if (!inicial) return;
+    // Não dá para excluir o que não existe: a fatura calculada some sozinha
+    // quando a conta daquele mês é gravada.
+    if (!inicial || ehFaturaCalculada) return;
     const ok = await executar(() => billsApi.delete(inicial.id), { erro: t("erroAoExcluir") });
     if (ok !== null) onFechar();
   };
@@ -523,7 +530,7 @@ export function ContaDialog({ aberto, onFechar, inicial }: { aberto: boolean; on
       salvando={salvando}
       podeSalvar={podeSalvar}
       largura="max-w-lg"
-      rodapeExtra={inicial ? <BotaoExcluir rotulo={t("financesDeleteBill")} onExcluir={excluir} aberto={aberto} /> : undefined}
+      rodapeExtra={inicial && !ehFaturaCalculada ? <BotaoExcluir rotulo={t("financesDeleteBill")} onExcluir={excluir} aberto={aberto} /> : undefined}
     >
       <Campo rotulo={t("financesBillName")}>
         <Input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} className={campo} placeholder={t("exConta")} />

@@ -182,9 +182,13 @@ function LinhaConta({
           <Check className="h-4 w-4" strokeWidth={3} />
         </button>
         {fatura ? (
-          // A fatura é a soma das compras: não há o que editar nela. Em vez de
-          // não oferecer nada, leva até as compras, onde o valor se corrige.
-          <div className="flex w-0 overflow-hidden opacity-0 transition-all group-focus-within:w-8 group-focus-within:opacity-100 group-hover:w-8 group-hover:opacity-100">
+          // A fatura começa como a soma das compras, mas o valor digitado manda:
+          // editar grava a conta daquele mês e o cálculo se cala. Quem anota
+          // tudo confere pelas compras; quem não anota só escreve o valor.
+          <div className="flex w-0 overflow-hidden opacity-0 transition-all group-focus-within:w-16 group-focus-within:opacity-100 group-hover:w-16 group-hover:opacity-100">
+            <BotaoIcone rotulo={t("financesEditBill")} onClick={onEditar}>
+              <Pencil className="h-3.5 w-3.5" />
+            </BotaoIcone>
             <BotaoIcone rotulo={t("verCompras")} onClick={onVerCompras}>
               <Receipt className="h-3.5 w-3.5" />
             </BotaoIcone>

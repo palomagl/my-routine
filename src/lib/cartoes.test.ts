@@ -80,6 +80,15 @@ describe("faturas em aberto viram contas a pagar", () => {
     expect(faturas.map((f) => f.name)).toEqual(["Fatura Nubank · Neuza · 10/2026"]);
   });
 
+  it("some também quando a conta do mês existe sem estar paga", () => {
+    // É o que faz o valor digitado na mão valer mais do que a soma das compras:
+    // quem não anota todo gasto do cartão escreve o valor da fatura e o cálculo
+    // para de opinar, mesmo antes de pagar.
+    const registrada = (n: string) => n === "Fatura Nubank · Paloma · 10/2026";
+    const faturas = faturasEmAberto([paloma, neuzaNu], compras, registrada, "2026-10-10");
+    expect(faturas.map((f) => f.name)).toEqual(["Fatura Nubank · Neuza · 10/2026"]);
+  });
+
   it("cartão sem compra nenhuma não vira conta a pagar", () => {
     expect(faturasEmAberto([neuzaSan], compras, () => false, "2026-10-10")).toEqual([]);
   });

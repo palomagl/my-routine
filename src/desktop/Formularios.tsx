@@ -982,6 +982,11 @@ export function MetaDialog({ aberto, onFechar, inicial }: { aberto: boolean; onF
 
   const hojeMes = mesAtual();
   const atalhos: { rotulo: string; mes: string | null }[] = [
+    // Um objetivo para o mês corrente ("guardar 3 mil em novembro") é dos mais
+    // comuns, e antes só dava para chegar nele pelo seletor de mês ao lado —
+    // que passava despercebido.
+    { rotulo: t("esteMes"), mes: hojeMes },
+    { rotulo: t("mesQueVem"), mes: somarMesesAoMes(hojeMes, 1) },
     { rotulo: t("em3Meses"), mes: somarMesesAoMes(hojeMes, 3) },
     { rotulo: t("em6Meses"), mes: somarMesesAoMes(hojeMes, 6) },
     { rotulo: t("em12Meses"), mes: somarMesesAoMes(hojeMes, 12) },

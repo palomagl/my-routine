@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CreditCard, Plus } from "lucide-react";
 import { billsApi, type Transaction } from "@/lib/db";
 import {
@@ -136,12 +136,26 @@ function MarcaDoBanco({ banco }: { banco: BancoCartao }) {
   return <span className="text-[13px] font-bold uppercase leading-none tracking-wide">Cartão</span>;
 }
 
-export function Cartoes({ aoEditarCompra }: { aoEditarCompra?: (compra: Transaction) => void }) {
+export function Cartoes({
+  aoEditarCompra,
+  abrirCartao,
+}: {
+  aoEditarCompra?: (compra: Transaction) => void;
+  /**
+   * Abre direto neste cartão. Serve para quem toca na fatura em "contas a
+   * pagar" cair nas compras que formam o valor — que é onde dá para corrigi-lo.
+   */
+  abrirCartao?: string | null;
+}) {
   const { t } = useLocale();
   const cartoes = useCartoes().itens;
   const transacoes = useTransacoes().itens;
   const contas = useContas().itens;
   const [aberto, setAberto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (abrirCartao) setAberto(abrirCartao);
+  }, [abrirCartao]);
   const [dialogo, setDialogo] = useState<{ inicial?: Cartao } | null>(null);
 
   const hoje = dayKey();

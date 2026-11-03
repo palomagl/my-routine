@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ArrowDownToLine, ArrowUpToLine, Eye, EyeOff, Target, Wallet } from "lucide-react";
 import { useLocale } from "@/contexts/LocaleContext";
@@ -106,6 +106,16 @@ export default function FinancasDesktop() {
   const { hash } = useLocation();
   const [periodo, setPeriodo] = useState<Periodo>("30d");
 
+  // Tocar numa fatura em "contas a pagar" não tem o que editar: o valor é a
+  // soma das compras do cartão. Em vez de não fazer nada, abre o cartão aqui
+  // embaixo, com as compras — que é onde o valor se corrige.
+  const [cartaoAberto, setCartaoAberto] = useState<string | null>(null);
+  const areaDosCartoes = useRef<HTMLDivElement>(null);
+  const verFatura = (cartaoId: string) => {
+    setCartaoAberto(cartaoId);
+    areaDosCartoes.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   // "Ver detalhes" das metas na Início leva para /financas#metas.
   useEffect(() => {
     if (!hash) return;
@@ -132,8 +142,10 @@ export default function FinancasDesktop() {
           <TransacoesCard />
           <MetasCard />
         </div>
-        <ContasCard />
-        <Cartoes />
+        <ContasCard aoVerFatura={verFatura} />
+        <div ref={areaDosCartoes}>
+          <Cartoes abrirCartao={cartaoAberto} />
+        </div>
         <TelegramFaixa />
       </div>
     </>

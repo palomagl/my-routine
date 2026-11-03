@@ -105,7 +105,20 @@ function DataCartao({ vencimento, situacao }: { vencimento: string; situacao: Si
   );
 }
 
-function LinhaConta({ conta, vencimento, onEditar, onExcluir }: { conta: Bill; vencimento: string; onEditar: () => void; onExcluir: () => void }) {
+function LinhaConta({
+  conta,
+  vencimento,
+  onEditar,
+  onExcluir,
+  onVerCompras,
+}: {
+  conta: Bill;
+  vencimento: string;
+  onEditar: () => void;
+  onExcluir: () => void;
+  /** Só para faturas: leva às compras que formam o valor. */
+  onVerCompras: () => void;
+}) {
   const { t } = useLocale();
   const dinheiro = useDinheiro();
   const rotulos = useRotulosConta();
@@ -168,7 +181,15 @@ function LinhaConta({ conta, vencimento, onEditar, onExcluir }: { conta: Bill; v
         >
           <Check className="h-4 w-4" strokeWidth={3} />
         </button>
-        {!fatura && (
+        {fatura ? (
+          // A fatura é a soma das compras: não há o que editar nela. Em vez de
+          // não oferecer nada, leva até as compras, onde o valor se corrige.
+          <div className="flex w-0 overflow-hidden opacity-0 transition-all group-focus-within:w-8 group-focus-within:opacity-100 group-hover:w-8 group-hover:opacity-100">
+            <BotaoIcone rotulo={t("verCompras")} onClick={onVerCompras}>
+              <Receipt className="h-3.5 w-3.5" />
+            </BotaoIcone>
+          </div>
+        ) : (
           <div className="flex w-0 overflow-hidden opacity-0 transition-all group-focus-within:w-16 group-focus-within:opacity-100 group-hover:w-16 group-hover:opacity-100">
             <BotaoIcone rotulo={t("financesEditBill")} onClick={onEditar}>
               <Pencil className="h-3.5 w-3.5" />
@@ -183,7 +204,14 @@ function LinhaConta({ conta, vencimento, onEditar, onExcluir }: { conta: Bill; v
   );
 }
 
-export function ContasCard({ className }: { className?: string }) {
+export function ContasCard({
+  className,
+  aoVerFatura,
+}: {
+  className?: string;
+  /** Chamado ao pedir as compras de uma fatura, com o id do cartão. */
+  aoVerFatura?: (cartaoId: string) => void;
+}) {
   const { t, locale } = useLocale();
   const quantas = (n: number) => (n === 1 ? t("umaConta") : t("nContas").replace("{n}", String(n)));
   const cores = useCores();
@@ -387,6 +415,10 @@ export function ContasCard({ className }: { className?: string }) {
                         vencimento={vencimento}
                         onEditar={() => setDialogo({ aberto: true, conta })}
                         onExcluir={() => setExcluir(conta)}
+                        onVerCompras={() => {
+                          const id = (conta as Bill & { cartaoId?: string }).cartaoId;
+                          if (id) aoVerFatura?.(id);
+                        }}
                       />
                     ))}
                   </ul>

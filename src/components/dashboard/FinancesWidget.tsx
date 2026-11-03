@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowDownToLine, ArrowUpToLine, CalendarClock, Check, ChevronDown, Pencil, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import type { Bill, Transaction } from "@/lib/db";
 import { billsApi } from "@/lib/db";
@@ -48,6 +48,18 @@ export function FinancesWidget() {
   const [verPagas, setVerPagas] = useState(false);
   const [todosLancamentos, setTodosLancamentos] = useState(false);
   const [dialogo, setDialogo] = useState<Dialogo>(null);
+
+  // A fatura é a soma das compras do cartão: não existe no banco e não há o
+  // que editar nela. Tocá-la agora abre o cartão lá embaixo, com as compras
+  // que formam o valor — que é onde dá para corrigir.
+  const [cartaoAberto, setCartaoAberto] = useState<string | null>(null);
+  const areaDosCartoes = useRef<HTMLDivElement>(null);
+  const abrirComprasDaFatura = (conta: Bill) => {
+    const cartaoId = (conta as Bill & { cartaoId?: string }).cartaoId;
+    if (!cartaoId) return;
+    setCartaoAberto(cartaoId);
+    areaDosCartoes.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   const hoje = dayKey();
   const d = useMemo(() => {
@@ -199,7 +211,11 @@ export function FinancesWidget() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => !ehFatura(conta.id) && setDialogo({ tipo: "conta", inicial: conta })}
+                  onClick={() =>
+                    ehFatura(conta.id)
+                      ? abrirComprasDaFatura(conta)
+                      : setDialogo({ tipo: "conta", inicial: conta })
+                  }
                   className="min-w-0 flex-1 text-left"
                 >
                   <span className="flex items-baseline justify-between gap-2">
@@ -285,7 +301,12 @@ export function FinancesWidget() {
       </section>
 
       {/* 6. Cartões de crédito */}
-      <Cartoes aoEditarCompra={(compra) => setDialogo({ tipo: "transacao", inicial: compra })} />
+      <div ref={areaDosCartoes}>
+        <Cartoes
+          abrirCartao={cartaoAberto}
+          aoEditarCompra={(compra) => setDialogo({ tipo: "transacao", inicial: compra })}
+        />
+      </div>
 
       <TransacaoDialog
         aberto={dialogo?.tipo === "transacao"}
